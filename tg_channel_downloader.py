@@ -107,25 +107,25 @@ async def upload_file(cmd, total, file_name, entity_url, message, chat_title):
                     bar = (int(progress) // 5) * '█' + (20 - int(progress) // 5) * '░'
                 except TypeError:
                     continue
-                print(f'\r上传进度 - |{bar}{progress}% | '
+                print(f'\rUpload progress - |{bar}{progress}% | '
                       f'{transferred_size}/{total_size} | {speed} | ETA: {eta}', end="")
     ret.stdout.close()
     ret.kill()
 
-    text = "<b>上传{}：</b>\n" \
-           "当前时间：<code>{}</code>\n" \
-           "文件大小：<code>{}</code>\n" \
-           "文件名称：<code>{}</code>\n\n" \
-           "消息直链：<a href={}>{}</a>".format(
-        '成功✅' if ret.returncode == 0 else "失败❎",
+    text = "<b>Upload{}：</b>\n" \
+           "current time：<code>{}</code>\n" \
+           "File size：<code>{}</code>\n" \
+           "file name：<code>{}</code>\n\n" \
+           "News direct link：<a href={}>{}</a>".format(
+        'success✅' if ret.returncode == 0 else "failure❎",
         get_local_time(),
         bytes_to_string(total),
         file_name,
         '{}/{}'.format(entity_url, message.id),
-        "👉点击直达👈"
+        "👉Click to go👈"
     )
     await bot.send_message(admin_id, text, parse_mode='html', link_preview=False)
-    print(f'\n{get_local_time()} - {file_name} - 上传{"成功✅" if ret.returncode == 0 else "失败❎"}')
+    print(f'\n{get_local_time()} - {file_name} - Upload{"success✅" if ret.returncode == 0 else "failure❎"}')
     if ret.returncode == 0:
         r.hset('tg_channel_downloader', chat_title, message.id)
     return
@@ -144,8 +144,8 @@ async def main():
         else:
             # 如果 redis没有缓存对话标题，设置offset_id 为0从最新开始的下载。
             offset_id = 0
-        tqdm.write(f'{get_local_time()} - 开始下载：{chat_title}({entity.id})')
-        await bot.send_message(admin_id, f'开始下载：{chat_title}({entity.id}) - {offset_id}')
+        tqdm.write(f'{get_local_time()} - start download：{chat_title}({entity.id})')
+        await bot.send_message(admin_id, f'start download：{chat_title}({entity.id}) - {offset_id}')
         loop = asyncio.get_event_loop()
         async for message in client.iter_messages(entity=chat, reverse=True, offset_id=offset_id, limit=None):
             # 判断是否是媒体文件。包含各种文件和视频、图片。
@@ -190,7 +190,7 @@ async def main():
                 # 主文件夹按对话标题和ID命名
                 dirname = validateTitle(f'{chat_title}({entity.id})')
                 # 分类文件夹按年月
-                datetime_dir_name = message.date.strftime("%Y年%m月")
+                datetime_dir_name = message.date.strftime("%Yyear%mmonth")
                 # 如果文件夹不存在则创建文件夹
                 file_save_path = os.path.join(save_path, dirname, datetime_dir_name)
                 if not os.path.exists(file_save_path):
@@ -199,7 +199,7 @@ async def main():
                 if file_name in os.listdir(file_save_path):
                     os.remove(os.path.join(file_save_path, file_name))
                 td = tqdm_up_to(total=total,
-                                desc=f'{get_local_time()} - 正在下载: {file_name}',
+                                desc=f'{get_local_time()} - downloading: {file_name}',
                                 unit='B',
                                 unit_scale=True)
                 download_task = loop.create_task(message.download_media(file=os.path.join(file_save_path, file_name),
@@ -216,11 +216,11 @@ async def main():
                     await asyncio.wait_for(upload_task, timeout=maximum_seconds_per_download)
                 else:
                     r.hset('tg_channel_downloader', chat_title, message.id)
-        tqdm.write('所有下载任务完成！')
-        await bot.send_message(admin_id, f'{chat_title}({entity.id}) - 全部下载完毕！')
+        tqdm.write('All download tasks are complete!')
+        await bot.send_message(admin_id, f'{chat_title}({entity.id}) - All downloaded!')
     except errors.FileReferenceExpiredError:
-        await bot.send_message(admin_id, 'Error：\n由于telegram限制消息内媒体的file_reference时间为2小时，正在自动重试任务！')
-        logging.warning('Error：\n由于telegram限制消息内媒体的file_reference时间为2小时，正在自动重试任务！')
+        await bot.send_message(admin_id, 'Error：\nDue to telegram restrictions on the media in the messagefile_reference The time is 2 hours and the task is being retried automatically!')
+        logging.warning('Error：\nDue to telegram restrictions on the media in the messagefile_referenceThe time is 2 hours and the task is being retried automatically')
         await main()
 
 
@@ -229,7 +229,7 @@ async def handler(update):
     try:
         if update.message.from_id == admin_id:
             if update.message.text.startswith('/start'):
-                await bot.send_message(admin_id, '开启成功')
+                await bot.send_message(admin_id, 'Successfully opened')
                 await main()
             if update.message.text == '/ping':
                 await bot.send_message(admin_id, 'peng')
@@ -238,12 +238,12 @@ async def handler(update):
                 entity = await client.get_entity(chat)
                 chat_title = entity.title
                 r.hset('tg_channel_downloader', chat_title, offset_id)
-                await bot.send_message(admin_id, f'消息偏移已设置为：{offset_id}')
+                await bot.send_message(admin_id, f'The message offset has been set to：{offset_id}')
     except errors.FloodWaitError as f:
-        await bot.send_message(admin_id, f'短时间内大量请求导致错误，需要等待 `{f.seconds}` 秒')
-        logging.warning(f'短时间内大量请求导致错误，需要等待 `{f.seconds}` 秒')
+        await bot.send_message(admin_id, f'A large number of requests in a short period of time cause errors and need to wait `{f.seconds}` second')
+        logging.warning(f'A large number of requests in a short period of time cause errors and need to wait `{f.seconds}` second')
     except Exception as e:
-        await bot.send_message(admin_id, '出现异常：\n' + str(e))
+        await bot.send_message(admin_id, 'Abnormal：\n' + str(e))
         logging.warning(e)
 
 
